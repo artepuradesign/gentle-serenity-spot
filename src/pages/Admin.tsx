@@ -436,10 +436,13 @@ const Admin = () => {
   );
 };
 
-// Extrato preview component (matches PDF export layout)
-function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extratoData, formatCurrency }: {
-  contaInfo: any; resumo: any; movimentacoes: any; datasOrdenadas: string[]; extratoData: any; formatCurrency: (v: number) => string;
+// Extrato preview component with editable transactions (matches ExtratoExport layout)
+function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extratoData, formatCurrency, onTransacaoUpdated }: {
+  contaInfo: any; resumo: any; movimentacoes: any; datasOrdenadas: string[]; extratoData: any; formatCurrency: (v: number) => string; onTransacaoUpdated: () => void;
 }) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+
   const fmtPeriodo = (d: string) =>
     new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
 
@@ -461,14 +464,70 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
     saldoPorDia[dia] = saldoAcumulado;
   }
 
+  const handleStartEdit = (t: any) => {
+    setEditingId(t.id);
+    setEditValue(t.valor);
+  };
+
+  const handleSaveEdit = async (transacaoId: number) => {
+    try {
+      await apiPost("admin.php", {
+        action: "editar_transacao",
+        transacao_id: transacaoId,
+        valor: parseFloat(editValue),
+      });
+      toast.success("Valor atualizado!");
+      setEditingId(null);
+      onTransacaoUpdated();
+    } catch {
+      toast.error("Erro ao atualizar valor");
+    }
+  };
+
+  const renderTransacaoRow = (t: any, i: number) => {
+    const isEditing = editingId === t.id;
+    return (
+      <tr key={t.id || i}>
+        <td style={{ padding: "4px 16px 4px 0" }}></td>
+        <td style={{ padding: "4px 0", verticalAlign: "top", width: "200px" }}>
+          {t.descricao}
+        </td>
+        <td style={{ padding: "4px 8px", verticalAlign: "top", color: "#555", fontSize: "10px", lineHeight: "1.6" }}>
+          {t.beneficiario_nome} - {t.beneficiario_documento} - {t.beneficiario_banco} Agência: {t.beneficiario_agencia} Conta: {t.beneficiario_conta}
+        </td>
+        <td style={{ textAlign: "right", padding: "4px 0 4px 24px", verticalAlign: "top", whiteSpace: "nowrap" }}>
+          {isEditing ? (
+            <span className="inline-flex items-center gap-1">
+              <Input
+                type="number"
+                step="0.01"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                className="w-28 h-7 text-right text-xs"
+              />
+              <button onClick={() => handleSaveEdit(t.id)} className="text-green-600 hover:text-green-800 p-0.5"><Check className="h-3.5 w-3.5" /></button>
+              <button onClick={() => setEditingId(null)} className="text-red-500 hover:text-red-700 p-0.5"><X className="h-3.5 w-3.5" /></button>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              {formatCurrency(parseFloat(t.valor))}
+              <button onClick={() => handleStartEdit(t)} className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100"><Pencil className="h-3 w-3" /></button>
+            </span>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
   return (
-    <div className="bg-white text-black p-8 max-w-[210mm] mx-auto" style={{ fontFamily: "'Graphik Regular', 'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: "11px", lineHeight: "1.5" }}>
+    <div className="bg-white text-black p-8 max-w-[210mm] mx-auto" style={{ fontFamily: "'Graphik', 'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: "11px", lineHeight: "1.5" }}>
+      {/* HEADER */}
       <div className="flex justify-between items-start mb-12">
-        <img src={logoNu} alt="Nu" style={{ height: "42px", width: "auto" }} />
+        <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto", marginLeft: "15px" }} />
         <div className="text-right" style={{ fontSize: "12px", lineHeight: "1.6" }}>
           <p>{contaInfo.titular || "—"}</p>
           <p>
-            <span style={{ fontWeight: 700, color: "#820AD1" }}>{contaInfo.tipo_conta === "PJ" ? "CNPJ" : "CPF"}</span>{"  "}{contaInfo.documento || "—"}{"  "}
+            <span style={{ fontWeight: 700, color: "#222" }}>{contaInfo.tipo_conta === "PJ" ? "CNPJ" : "CPF"}</span>{"  "}{contaInfo.documento || "—"}{"  "}
             <span style={{ fontWeight: 700 }}>Agência</span>{"  "}{contaInfo.agencia || "0001"}{"  "}
             <span style={{ fontWeight: 700 }}>Conta</span>
           </p>
@@ -476,7 +535,8 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
         </div>
       </div>
 
-      <div style={{ borderBottom: "2px solid #222", paddingBottom: "8px", marginBottom: "24px" }}>
+      {/* PERÍODO */}
+      <div style={{ borderBottom: "2px solid #ccc", paddingBottom: "8px", marginBottom: "24px" }}>
         <div className="flex justify-between items-baseline">
           <span style={{ fontWeight: 700, fontSize: "12px" }}>
             {extratoData?.periodo ? `${fmtPeriodo(extratoData.periodo.inicio)} a ${fmtPeriodo(extratoData.periodo.fim)}` : "—"}
@@ -485,10 +545,11 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
         </div>
       </div>
 
+      {/* RESUMO */}
       <div className="flex justify-between items-start" style={{ marginBottom: "24px" }}>
         <div style={{ paddingTop: "8px" }}>
-          <p style={{ fontSize: "11px", color: "#666", marginBottom: "6px" }}>Saldo final do período</p>
-          <p style={{ fontSize: "26px", fontWeight: 700, color: "#1a7a2e", lineHeight: "1.2" }}>R$ {formatCurrency(resumo.saldo_final)}</p>
+          <p style={{ fontSize: "11px", color: "#000", marginBottom: "6px", fontWeight: 700 }}>Saldo final do período</p>
+          <p style={{ fontSize: "22px", fontWeight: 700, color: "#820AD1", lineHeight: "1.2" }}>R$ {formatCurrency(resumo.saldo_final)}</p>
         </div>
         <table style={{ fontSize: "12px", borderCollapse: "collapse", minWidth: "320px" }}>
           <tbody>
@@ -496,13 +557,15 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
             <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Rendimento líquido</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.rendimento_liquido)}</td></tr>
             <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de entradas</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.total_entradas)}</td></tr>
             <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de saídas</td><td style={{ textAlign: "right", padding: "3px 0" }}>-{formatCurrency(resumo.total_saidas)}</td></tr>
-            <tr><td style={{ fontWeight: 700, padding: "6px 16px 3px 0", borderTop: "1px solid #ccc" }}>Saldo final do período</td><td style={{ fontWeight: 700, textAlign: "right", padding: "6px 0 3px 0", borderTop: "1px solid #ccc" }}>{formatCurrency(resumo.saldo_final)}</td></tr>
+            <tr><td style={{ fontWeight: 700, padding: "6px 16px 3px 0" }}>Saldo final do período</td><td style={{ fontWeight: 700, textAlign: "right", padding: "6px 0 3px 0" }}>{formatCurrency(resumo.saldo_final)}</td></tr>
           </tbody>
         </table>
       </div>
 
-      <div style={{ borderBottom: "2px solid #222", paddingBottom: "6px", marginBottom: "16px" }}>
-        <span style={{ fontWeight: 700, fontSize: "12px", textDecoration: "underline", textUnderlineOffset: "4px" }}>Movimentações</span>
+      {/* MOVIMENTAÇÕES */}
+      <div style={{ borderBottom: "2px solid #ccc", marginBottom: "4px" }}></div>
+      <div style={{ marginBottom: "16px" }}>
+        <span style={{ fontWeight: 700, fontSize: "12px" }}>Movimentações</span>
       </div>
 
       {datasOrdenadas.length === 0 && <p style={{ textAlign: "center", color: "#999", padding: "20px 0" }}>Nenhuma movimentação encontrada.</p>}
@@ -513,57 +576,39 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
         const saidas = trans.filter((t: any) => t.tipo === "saida");
         const totalE = entradas.reduce((s: number, t: any) => s + parseFloat(t.valor), 0);
         const totalS = saidas.reduce((s: number, t: any) => s + parseFloat(t.valor), 0);
+        const dateShownInEntradas = entradas.length > 0;
 
         return (
-          <div key={dia} style={{ marginBottom: "8px" }}>
-            {entradas.length > 0 && (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", marginBottom: "4px" }}>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid #ddd" }}>
-                    <td style={{ width: "90px", padding: "8px 12px 8px 0" }}>{fmtDia(dia)}</td>
-                    <td style={{ fontWeight: 700, padding: "8px 0" }}>Total de entradas</td>
-                    <td style={{ fontWeight: 700, textAlign: "right", padding: "8px 0", whiteSpace: "nowrap" }}>+ {formatCurrency(totalE)}</td>
-                  </tr>
-                  {entradas.map((t: any, i: number) => (
-                    <tr key={t.id || i}>
-                      <td style={{ padding: "6px 12px 6px 0" }}></td>
-                      <td style={{ padding: "6px 0", verticalAlign: "top" }}>
-                        <span>{t.descricao}</span><br />
-                        <span style={{ color: "#888", fontSize: "10px" }}>{t.beneficiario_nome} - {t.beneficiario_documento} - {t.beneficiario_banco} Agência: {t.beneficiario_agencia} Conta: {t.beneficiario_conta}</span>
-                      </td>
-                      <td style={{ textAlign: "right", padding: "6px 0", verticalAlign: "top", whiteSpace: "nowrap" }}>{formatCurrency(parseFloat(t.valor))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {saidas.length > 0 && (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", marginBottom: "4px" }}>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid #ddd" }}>
-                    <td style={{ width: "90px", padding: "8px 12px 8px 0" }}>{entradas.length === 0 ? fmtDia(dia) : ""}</td>
-                    <td style={{ fontWeight: 700, padding: "8px 0" }}>Total de saídas</td>
-                    <td style={{ fontWeight: 700, textAlign: "right", padding: "8px 0", whiteSpace: "nowrap" }}>- {formatCurrency(totalS)}</td>
-                  </tr>
-                  {saidas.map((t: any, i: number) => (
-                    <tr key={t.id || i}>
-                      <td style={{ padding: "6px 12px 6px 0" }}></td>
-                      <td style={{ padding: "6px 0", verticalAlign: "top" }}>
-                        <span>{t.descricao}</span><br />
-                        <span style={{ color: "#888", fontSize: "10px" }}>{t.beneficiario_nome} - {t.beneficiario_documento} - {t.beneficiario_banco} Agência: {t.beneficiario_agencia} Conta: {t.beneficiario_conta}</span>
-                      </td>
-                      <td style={{ textAlign: "right", padding: "6px 0", verticalAlign: "top", whiteSpace: "nowrap" }}>{formatCurrency(parseFloat(t.valor))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+          <div key={dia} style={{ marginBottom: "0" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
               <tbody>
-                <tr style={{ borderTop: "2px solid #bbb", borderBottom: "2px solid #bbb" }}>
-                  <td style={{ width: "90px", padding: "8px 12px 8px 0" }}></td>
-                  <td style={{ fontWeight: 700, padding: "8px 0" }}>Saldo do dia</td>
-                  <td style={{ fontWeight: 700, textAlign: "right", padding: "8px 0" }}>{formatCurrency(saldoPorDia[dia])}</td>
+                {entradas.length > 0 && (
+                  <>
+                    <tr>
+                      <td style={{ width: "110px", verticalAlign: "top", padding: "10px 16px 10px 0", color: "#222", fontWeight: 700 }}>{fmtDia(dia)}</td>
+                      <td style={{ fontWeight: 700, padding: "10px 0", verticalAlign: "top" }}>Total de entradas</td>
+                      <td style={{ padding: "10px 0" }}></td>
+                      <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px", whiteSpace: "nowrap", verticalAlign: "top" }}>+ {formatCurrency(totalE)}</td>
+                    </tr>
+                    {entradas.map((t: any, i: number) => renderTransacaoRow(t, i))}
+                  </>
+                )}
+                {saidas.length > 0 && (
+                  <>
+                    <tr>
+                      <td style={{ width: "110px", verticalAlign: "top", padding: "10px 16px 10px 0", color: "#222", fontWeight: 700 }}>{!dateShownInEntradas ? fmtDia(dia) : ""}</td>
+                      <td style={{ fontWeight: 700, padding: "10px 0", verticalAlign: "top" }}>Total de saídas</td>
+                      <td style={{ padding: "10px 0" }}></td>
+                      <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px", whiteSpace: "nowrap", verticalAlign: "top" }}>- {formatCurrency(totalS)}</td>
+                    </tr>
+                    {saidas.map((t: any, i: number) => renderTransacaoRow(t, i))}
+                  </>
+                )}
+                <tr style={{ borderBottom: "2px solid #ccc" }}>
+                  <td style={{ padding: "10px 16px 10px 0" }}></td>
+                  <td style={{ fontWeight: 700, padding: "10px 0" }}>Saldo do dia</td>
+                  <td style={{ padding: "10px 0" }}></td>
+                  <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px" }}>{formatCurrency(saldoPorDia[dia])}</td>
                 </tr>
               </tbody>
             </table>
@@ -571,10 +616,30 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
         );
       })}
 
-      <div style={{ marginTop: "32px", borderTop: "1px solid #ddd", paddingTop: "16px", fontSize: "10px", color: "#888", lineHeight: "1.6" }}>
+      {/* Rodapé */}
+      <div style={{ marginTop: "40px", borderTop: "1px solid #ddd", paddingTop: "16px", fontSize: "10px", color: "#555", lineHeight: "1.6" }}>
+        <p>O saldo líquido corresponde ao total de depósitos e rendimentos em conta, não considerando movimentações feitas após a data mencionada.</p>
+        <p>Não nos responsabilizamos pelo uso indevido ou por alterações das informações originalmente contidas neste documento após envio.</p>
+        <p>Asseguramos a autenticidade destas movimentações e das informações aqui citadas.</p>
+      </div>
+      <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "11.5px", lineHeight: "1.6", color: "#222" }}>
+        <div>
+          <p style={{ fontWeight: 700 }}>Nu Financeira S.A. - Sociedade de Credito, Financiamento</p>
+          <p style={{ fontWeight: 700 }}>e Investimento</p>
+          <p>CNPJ: 30.680.829/0001-43</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ fontWeight: 700 }}>Nu Pagamentos S.A. - Instituição de Pagamento</p>
+          <p>CNPJ: 18.236.120/0001-58</p>
+        </div>
+      </div>
+      <div style={{ marginTop: "16px", fontSize: "10px", color: "#888", lineHeight: "1.6" }}>
         <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app ou ligue 4020 0185 (capitais e regiões metropolitanas) ou 0800 591 2117 (demais localidades). Atendimento 24h.</p>
         <p style={{ marginTop: "8px" }}>Caso a solução fornecida nos canais de atendimento não tenha sido satisfatória, fale com a Ouvidoria em 0800 887 0463 ou pelos meios disponíveis em nubank.com.br/contatos#ouvidoria. Atendimento das 8h às 18h em dias úteis.</p>
-        <p style={{ marginTop: "12px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+        <div className="flex justify-between" style={{ marginTop: "12px", paddingRight: "15px" }}>
+          <span style={{ marginLeft: "15px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+          <span>1 de 1</span>
+        </div>
       </div>
     </div>
   );
