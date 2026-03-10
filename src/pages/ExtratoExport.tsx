@@ -132,8 +132,8 @@ const ExtratoExport = () => {
       <div className="print-footer hidden print:block">
         <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app ou ligue 4020 0185 (capitais e regiões metropolitanas) ou 0800 591 2117 (demais localidades). Atendimento 24h.</p>
         <p style={{ marginTop: "4px" }}>Caso a solução fornecida nos canais de atendimento não tenha sido satisfatória, fale com a Ouvidoria em 0800 887 0463 ou pelos meios disponíveis em nubank.com.br/contatos#ouvidoria. Atendimento das 8h às 18h em dias úteis.</p>
-        <div className="footer-date-page" style={{ paddingRight: "10px" }}>
-          <span style={{ marginLeft: "10px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+        <div className="footer-date-page" style={{ paddingRight: "20px" }}>
+          <span style={{ marginLeft: "30px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
           <span className="footer-page-number"></span>
         </div>
       </div>
@@ -155,7 +155,7 @@ const ExtratoExport = () => {
         >
           {/* ===== HEADER ===== */}
           <div className="flex justify-between items-start mb-12">
-            <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto", marginLeft: "15px" }} />
+            <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto", marginLeft: "30px" }} />
             <div className="text-right" style={{ fontSize: "12px", lineHeight: "1.6" }}>
               <p style={{ fontWeight: 400 }}>{conta.titular}</p>
               <p>
@@ -319,8 +319,8 @@ const ExtratoExport = () => {
           <div className="print-footer-screen" style={{ marginTop: "32px" }}>
             <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app ou ligue 4020 0185 (capitais e regiões metropolitanas) ou 0800 591 2117 (demais localidades). Atendimento 24h.</p>
             <p style={{ marginTop: "8px" }}>Caso a solução fornecida nos canais de atendimento não tenha sido satisfatória, fale com a Ouvidoria em 0800 887 0463 ou pelos meios disponíveis em nubank.com.br/contatos#ouvidoria. Atendimento das 8h às 18h em dias úteis.</p>
-            <div className="flex justify-between" style={{ marginTop: "12px", paddingRight: "15px" }}>
-              <span style={{ marginLeft: "15px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+            <div className="flex justify-between" style={{ marginTop: "12px", paddingRight: "20px" }}>
+              <span style={{ marginLeft: "30px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
               <span>1 de 1</span>
             </div>
           </div>
