@@ -754,6 +754,13 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
   contaInfo: any; resumo: any; movimentacoes: any; datasOrdenadas: string[]; extratoData: any; formatCurrency: (v: number) => string; onTransacaoUpdated: () => void;
 }) {
   const [editingTransacao, setEditingTransacao] = useState<any>(null);
+  const [saldoInicial, setSaldoInicial] = useState<number>(resumo.saldo_inicial || 0);
+  const [editingSaldoInicial, setEditingSaldoInicial] = useState(false);
+  const [saldoInicialInput, setSaldoInicialInput] = useState("");
+
+  useEffect(() => {
+    setSaldoInicial(resumo.saldo_inicial || 0);
+  }, [resumo.saldo_inicial]);
 
   const fmtPeriodo = (d: string) =>
     new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
