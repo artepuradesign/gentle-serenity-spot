@@ -754,6 +754,13 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
   contaInfo: any; resumo: any; movimentacoes: any; datasOrdenadas: string[]; extratoData: any; formatCurrency: (v: number) => string; onTransacaoUpdated: () => void;
 }) {
   const [editingTransacao, setEditingTransacao] = useState<any>(null);
+  const [saldoInicial, setSaldoInicial] = useState<number>(resumo.saldo_inicial || 0);
+  const [editingSaldoInicial, setEditingSaldoInicial] = useState(false);
+  const [saldoInicialInput, setSaldoInicialInput] = useState("");
+
+  useEffect(() => {
+    setSaldoInicial(resumo.saldo_inicial || 0);
+  }, [resumo.saldo_inicial]);
 
   const fmtPeriodo = (d: string) =>
     new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
@@ -766,7 +773,7 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
   };
 
   const saldoPorDia: Record<string, number> = {};
-  let saldoAcumulado = resumo.saldo_inicial || 0;
+  let saldoAcumulado = saldoInicial;
   for (const dia of datasOrdenadas) {
     const trans = movimentacoes[dia];
     for (const t of trans) {
@@ -843,15 +850,47 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
         <div className="flex justify-between items-start" style={{ marginBottom: "24px" }}>
           <div style={{ paddingTop: "8px" }}>
             <p style={{ fontSize: "11px", color: "#000", marginBottom: "6px", fontWeight: 700 }}>Saldo final do período</p>
-            <p style={{ fontSize: "22px", fontWeight: 700, color: "#820AD1", lineHeight: "1.2" }}>R$ {formatCurrency(resumo.saldo_final)}</p>
+            <p style={{ fontSize: "22px", fontWeight: 700, color: "#820AD1", lineHeight: "1.2" }}>R$ {formatCurrency(saldoInicial + resumo.total_entradas - resumo.total_saidas + resumo.rendimento_liquido)}</p>
           </div>
           <table style={{ fontSize: "12px", borderCollapse: "collapse", minWidth: "320px" }}>
             <tbody>
-              <tr><td style={{ fontWeight: 700, padding: "3px 16px 3px 0" }}>Saldo inicial</td><td style={{ textAlign: "right", padding: "3px 0" }}>{formatCurrency(resumo.saldo_inicial)}</td></tr>
+              <tr>
+                <td style={{ fontWeight: 700, padding: "3px 16px 3px 0" }}>Saldo inicial</td>
+                <td style={{ textAlign: "right", padding: "3px 0" }}>
+                  {editingSaldoInicial ? (
+                    <span className="inline-flex items-center gap-1 print:hidden">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={saldoInicialInput}
+                        onChange={e => setSaldoInicialInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            setSaldoInicial(parseFloat(saldoInicialInput) || 0);
+                            setEditingSaldoInicial(false);
+                          }
+                          if (e.key === "Escape") setEditingSaldoInicial(false);
+                        }}
+                        autoFocus
+                        className="w-28 text-right border rounded px-1 py-0.5 text-xs"
+                      />
+                      <button onClick={() => { setSaldoInicial(parseFloat(saldoInicialInput) || 0); setEditingSaldoInicial(false); }} className="text-green-600 hover:text-green-800">✓</button>
+                      <button onClick={() => setEditingSaldoInicial(false)} className="text-red-500 hover:text-red-700">✕</button>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      {formatCurrency(saldoInicial)}
+                      <button onClick={() => { setSaldoInicialInput(String(saldoInicial)); setEditingSaldoInicial(true); }} className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 print:hidden">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                </td>
+              </tr>
               <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Rendimento líquido</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.rendimento_liquido)}</td></tr>
               <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de entradas</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.total_entradas)}</td></tr>
               <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de saídas</td><td style={{ textAlign: "right", padding: "3px 0" }}>-{formatCurrency(resumo.total_saidas)}</td></tr>
-              <tr><td style={{ fontWeight: 700, padding: "6px 16px 3px 0" }}>Saldo final do período</td><td style={{ fontWeight: 700, textAlign: "right", padding: "6px 0 3px 0" }}>{formatCurrency(resumo.saldo_final)}</td></tr>
+              <tr><td style={{ fontWeight: 700, padding: "6px 16px 3px 0" }}>Saldo final do período</td><td style={{ fontWeight: 700, textAlign: "right", padding: "6px 0 3px 0" }}>{formatCurrency(saldoInicial + resumo.total_entradas - resumo.total_saidas + resumo.rendimento_liquido)}</td></tr>
             </tbody>
           </table>
         </div>
