@@ -773,7 +773,7 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
   };
 
   const saldoPorDia: Record<string, number> = {};
-  let saldoAcumulado = resumo.saldo_inicial || 0;
+  let saldoAcumulado = saldoInicial;
   for (const dia of datasOrdenadas) {
     const trans = movimentacoes[dia];
     for (const t of trans) {
