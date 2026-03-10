@@ -10,7 +10,10 @@ import {
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  LogOut, Plus, FileText, Users, TrendingUp, TrendingDown, DollarSign, Download, Pencil, Check, X,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  LogOut, Plus, FileText, Users, TrendingUp, TrendingDown, DollarSign, Download, Pencil, Check, X, Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
@@ -47,21 +50,14 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Auth check - redirect if not admin
+  // Auth check
   useEffect(() => {
     const user = localStorage.getItem("nu_user") || sessionStorage.getItem("nu_user");
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+    if (!user) { navigate("/login"); return; }
     try {
       const parsed = JSON.parse(user);
-      if (!parsed.is_admin) {
-        navigate("/painel");
-      }
-    } catch {
-      navigate("/login");
-    }
+      if (!parsed.is_admin) navigate("/painel");
+    } catch { navigate("/login"); }
   }, [navigate]);
 
   // Extrato state
@@ -71,66 +67,49 @@ const Admin = () => {
   // Nova transação
   const [novaTransacao, setNovaTransacao] = useState({
     data: "", tipo: "entrada" as "entrada" | "saida", descricao: "Transferência recebida pelo Pix",
-    categoria: "PIX", valor: "", beneficiario: "", documento: "", banco: "", agencia: "", conta: "",
+    categoria: "PIX", valor: "", beneficiario: "", documento: "", banco: "", banco_codigo: "", agencia: "", conta: "",
   });
+
+  // Auto-update description when tipo changes
+  const handleTipoChange = (v: string) => {
+    const tipo = v as "entrada" | "saida";
+    const descricao = tipo === "entrada" ? "Transferência recebida pelo Pix" : "Transferência enviada pelo Pix";
+    setNovaTransacao(p => ({ ...p, tipo, descricao }));
+  };
 
   const fetchUsuarios = useCallback(async () => {
     try {
       const res = await apiGet<{ usuarios: Usuario[] }>("admin.php", { action: "usuarios" });
       setUsuarios(res.usuarios);
-      // Build contas list from usuarios
       const contasList: ContaOption[] = res.usuarios
         .filter(u => u.conta_id)
-        .map(u => ({
-          conta_id: u.conta_id,
-          titular: u.nome,
-          documento: u.documento,
-          numero_conta: u.numero_conta,
-        }));
+        .map(u => ({ conta_id: u.conta_id, titular: u.nome, documento: u.documento, numero_conta: u.numero_conta }));
       setContas(contasList);
-      if (contasList.length > 0 && !selectedConta) {
-        setSelectedConta(String(contasList[0].conta_id));
-      }
+      if (contasList.length > 0 && !selectedConta) setSelectedConta(String(contasList[0].conta_id));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar usuários";
       setErrorMsg(msg);
       toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [selectedConta]);
 
-  useEffect(() => {
-    fetchUsuarios();
-  }, [fetchUsuarios]);
+  useEffect(() => { fetchUsuarios(); }, [fetchUsuarios]);
 
-  // Load extrato when conta changes
   const fetchExtrato = useCallback(async (contaId: string) => {
     if (!contaId) return;
     setExtratoLoading(true);
     try {
-      const res = await apiGet<any>("admin.php", {
-        action: "transacoes",
-        conta_id: contaId,
-      });
+      const res = await apiGet<any>("admin.php", { action: "transacoes", conta_id: contaId });
       setExtratoData(res);
-    } catch {
-      toast.error("Erro ao carregar extrato");
-    } finally {
-      setExtratoLoading(false);
-    }
+    } catch { toast.error("Erro ao carregar extrato"); }
+    finally { setExtratoLoading(false); }
   }, []);
 
-  useEffect(() => {
-    if (selectedConta) fetchExtrato(selectedConta);
-  }, [selectedConta, fetchExtrato]);
+  useEffect(() => { if (selectedConta) fetchExtrato(selectedConta); }, [selectedConta, fetchExtrato]);
 
   const handleAddTransacao = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedConta) {
-      toast.error("Selecione uma conta primeiro");
-      return;
-    }
+    if (!selectedConta) { toast.error("Selecione uma conta primeiro"); return; }
     try {
       await apiPost("admin.php", {
         action: "criar_transacao",
@@ -143,13 +122,14 @@ const Admin = () => {
         beneficiario_nome: novaTransacao.beneficiario,
         beneficiario_documento: novaTransacao.documento,
         beneficiario_banco: novaTransacao.banco,
+        beneficiario_banco_codigo: novaTransacao.banco_codigo,
         beneficiario_agencia: novaTransacao.agencia,
         beneficiario_conta: novaTransacao.conta,
       });
       toast.success("Lançamento adicionado com sucesso!");
       setNovaTransacao({
         data: "", tipo: "entrada", descricao: "Transferência recebida pelo Pix",
-        categoria: "PIX", valor: "", beneficiario: "", documento: "", banco: "", agencia: "", conta: "",
+        categoria: "PIX", valor: "", beneficiario: "", documento: "", banco: "", banco_codigo: "", agencia: "", conta: "",
       });
       fetchExtrato(selectedConta);
       fetchUsuarios();
@@ -163,26 +143,20 @@ const Admin = () => {
       await apiPost("admin.php", { action: "ativar_usuario", usuario_id: userId, status: newStatus });
       toast.success(`Usuário ${newStatus === "ativo" ? "ativado" : "bloqueado"} com sucesso!`);
       fetchUsuarios();
-    } catch {
-      toast.error("Erro ao atualizar status");
-    }
+    } catch { toast.error("Erro ao atualizar status"); }
   };
 
   const formatCurrency = (v: number) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Extrato computed values
   const resumo = extratoData?.resumo || { saldo_inicial: 0, total_entradas: 0, total_saidas: 0, rendimento_liquido: 0, saldo_final: 0 };
   const contaInfo = extratoData?.conta || {};
   const movimentacoes = extratoData?.movimentacoes || {};
   const datasOrdenadas = Object.keys(movimentacoes).sort();
-
-  // Summary cards use selected conta data
   const selectedUser = usuarios.find(u => String(u.conta_id) === selectedConta);
 
   return (
     <div className="min-h-screen bg-secondary/30">
-      {/* Admin Header */}
       <header className="bg-background border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -200,7 +174,6 @@ const Admin = () => {
       </header>
 
       <div className="container mx-auto px-6 py-8 max-w-6xl">
-        {/* Conta selector */}
         {contas.length > 0 && (
           <div className="mb-6">
             <Label className="text-sm text-muted-foreground mb-2 block">Conta selecionada</Label>
@@ -251,6 +224,7 @@ const Admin = () => {
 
           {/* Lançamentos */}
           <TabsContent value="lancamentos">
+            {/* Novo Lançamento */}
             <Card className="nu-card border-0 mb-6">
               <CardHeader>
                 <CardTitle className="text-lg text-foreground">Novo Lançamento</CardTitle>
@@ -264,7 +238,7 @@ const Admin = () => {
                     </div>
                     <div>
                       <Label>Tipo *</Label>
-                      <Select value={novaTransacao.tipo} onValueChange={v => setNovaTransacao(p => ({ ...p, tipo: v as "entrada" | "saida" }))}>
+                      <Select value={novaTransacao.tipo} onValueChange={handleTipoChange}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="entrada">Entrada</SelectItem>
@@ -306,6 +280,10 @@ const Admin = () => {
                       <Input value={novaTransacao.banco} onChange={e => setNovaTransacao(p => ({ ...p, banco: e.target.value }))} />
                     </div>
                     <div>
+                      <Label>Código do Banco</Label>
+                      <Input value={novaTransacao.banco_codigo} onChange={e => setNovaTransacao(p => ({ ...p, banco_codigo: e.target.value }))} placeholder="0033" />
+                    </div>
+                    <div>
                       <Label>Agência</Label>
                       <Input value={novaTransacao.agencia} onChange={e => setNovaTransacao(p => ({ ...p, agencia: e.target.value }))} />
                     </div>
@@ -320,6 +298,13 @@ const Admin = () => {
                 </form>
               </CardContent>
             </Card>
+
+            {/* Gerador de Extrato */}
+            <GeradorExtrato
+              selectedConta={selectedConta}
+              usuarios={usuarios}
+              onGenerated={() => { fetchExtrato(selectedConta); fetchUsuarios(); }}
+            />
           </TabsContent>
 
           {/* Extrato */}
@@ -382,9 +367,7 @@ const Admin = () => {
                           <TableCell className="font-medium">{u.nome || "—"}</TableCell>
                           <TableCell className="text-sm">{u.documento || "—"}</TableCell>
                           <TableCell>
-                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-secondary text-foreground">
-                              {u.tipo_conta}
-                            </span>
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-secondary text-foreground">{u.tipo_conta}</span>
                           </TableCell>
                           <TableCell className="text-sm">{u.email}</TableCell>
                           <TableCell className="text-sm">{u.numero_conta || "—"}</TableCell>
@@ -402,19 +385,13 @@ const Admin = () => {
                           </TableCell>
                           <TableCell>
                             {u.status === "pendente" && (
-                              <Button size="sm" variant="outline" className="text-nu-green border-nu-green hover:bg-nu-green/10" onClick={() => handleStatusChange(u.id, "ativo")}>
-                                Ativar
-                              </Button>
+                              <Button size="sm" variant="outline" className="text-nu-green border-nu-green hover:bg-nu-green/10" onClick={() => handleStatusChange(u.id, "ativo")}>Ativar</Button>
                             )}
                             {u.status === "ativo" && (
-                              <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleStatusChange(u.id, "bloqueado")}>
-                                Bloquear
-                              </Button>
+                              <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleStatusChange(u.id, "bloqueado")}>Bloquear</Button>
                             )}
                             {u.status === "bloqueado" && (
-                              <Button size="sm" variant="outline" className="text-nu-green border-nu-green hover:bg-nu-green/10" onClick={() => handleStatusChange(u.id, "ativo")}>
-                                Reativar
-                              </Button>
+                              <Button size="sm" variant="outline" className="text-nu-green border-nu-green hover:bg-nu-green/10" onClick={() => handleStatusChange(u.id, "ativo")}>Reativar</Button>
                             )}
                           </TableCell>
                         </TableRow>
@@ -436,12 +413,345 @@ const Admin = () => {
   );
 };
 
-// Extrato preview component with editable transactions (matches ExtratoExport layout)
+// ============================================================
+// EDIT TRANSACTION MODAL
+// ============================================================
+function EditTransacaoModal({ transacao, open, onClose, onSaved }: {
+  transacao: any; open: boolean; onClose: () => void; onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    data_transacao: "",
+    descricao: "",
+    valor: "",
+    beneficiario_nome: "",
+    beneficiario_documento: "",
+    beneficiario_banco: "",
+    beneficiario_banco_codigo: "",
+    beneficiario_agencia: "",
+    beneficiario_conta: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (transacao) {
+      setForm({
+        data_transacao: transacao.data_transacao ? transacao.data_transacao.substring(0, 10) : "",
+        descricao: transacao.descricao || "",
+        valor: transacao.valor || "",
+        beneficiario_nome: transacao.beneficiario_nome || "",
+        beneficiario_documento: transacao.beneficiario_documento || "",
+        beneficiario_banco: transacao.beneficiario_banco || "",
+        beneficiario_banco_codigo: transacao.beneficiario_banco_codigo || "",
+        beneficiario_agencia: transacao.beneficiario_agencia || "",
+        beneficiario_conta: transacao.beneficiario_conta || "",
+      });
+    }
+  }, [transacao]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiPost("admin.php", {
+        action: "editar_transacao",
+        transacao_id: transacao.id,
+        ...form,
+        valor: parseFloat(form.valor),
+      });
+      toast.success("Transação atualizada!");
+      onSaved();
+      onClose();
+    } catch {
+      toast.error("Erro ao atualizar transação");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Editar Transação</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+          <div>
+            <Label>Data</Label>
+            <Input type="date" value={form.data_transacao} onChange={e => setForm(p => ({ ...p, data_transacao: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Valor (R$)</Label>
+            <Input type="number" step="0.01" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Descrição</Label>
+            <Input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Beneficiário/Pagador</Label>
+            <Input value={form.beneficiario_nome} onChange={e => setForm(p => ({ ...p, beneficiario_nome: e.target.value }))} />
+          </div>
+          <div>
+            <Label>CPF/CNPJ</Label>
+            <Input value={form.beneficiario_documento} onChange={e => setForm(p => ({ ...p, beneficiario_documento: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Banco</Label>
+            <Input value={form.beneficiario_banco} onChange={e => setForm(p => ({ ...p, beneficiario_banco: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Código do Banco</Label>
+            <Input value={form.beneficiario_banco_codigo} onChange={e => setForm(p => ({ ...p, beneficiario_banco_codigo: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Agência</Label>
+            <Input value={form.beneficiario_agencia} onChange={e => setForm(p => ({ ...p, beneficiario_agencia: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Conta</Label>
+            <Input value={form.beneficiario_conta} onChange={e => setForm(p => ({ ...p, beneficiario_conta: e.target.value }))} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="hero" onClick={handleSave} disabled={saving}>
+            {saving ? "Salvando..." : "Salvar alterações"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================
+// GERADOR DE EXTRATO
+// ============================================================
+function GeradorExtrato({ selectedConta, usuarios, onGenerated }: {
+  selectedConta: string; usuarios: Usuario[]; onGenerated: () => void;
+}) {
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [tipo, setTipo] = useState<"entrada" | "saida">("entrada");
+  const [categoria, setCategoria] = useState("PIX");
+  const [descricao, setDescricao] = useState("Transferência recebida pelo Pix");
+  const [valorFixo, setValorFixo] = useState("");
+  const [valorAleatorio, setValorAleatorio] = useState(false);
+  const [valorMin, setValorMin] = useState("");
+  const [valorMax, setValorMax] = useState("");
+  const [beneficiario, setBeneficiario] = useState("");
+  const [documento, setDocumento] = useState("");
+  const [banco, setBanco] = useState("");
+  const [bancoCodigo, setBancoCodigo] = useState("");
+  const [agencia, setAgencia] = useState("");
+  const [conta, setConta] = useState("");
+  const [frequencia, setFrequencia] = useState<"diario" | "semanal" | "mensal">("diario");
+  const [generating, setGenerating] = useState(false);
+
+  const handleTipoChangeGen = (v: string) => {
+    const t = v as "entrada" | "saida";
+    setTipo(t);
+    setDescricao(t === "entrada" ? "Transferência recebida pelo Pix" : "Transferência enviada pelo Pix");
+  };
+
+  const generateDates = (): string[] => {
+    if (!dataInicio || !dataFim) return [];
+    const dates: string[] = [];
+    const start = new Date(dataInicio + "T12:00:00");
+    const end = new Date(dataFim + "T12:00:00");
+    const current = new Date(start);
+
+    while (current <= end) {
+      dates.push(current.toISOString().substring(0, 10));
+      if (frequencia === "diario") current.setDate(current.getDate() + 1);
+      else if (frequencia === "semanal") current.setDate(current.getDate() + 7);
+      else current.setMonth(current.getMonth() + 1);
+    }
+    return dates;
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedConta) { toast.error("Selecione uma conta primeiro"); return; }
+    if (!dataInicio || !dataFim) { toast.error("Selecione o período"); return; }
+    if (!valorAleatorio && !valorFixo) { toast.error("Informe o valor"); return; }
+    if (valorAleatorio && (!valorMin || !valorMax)) { toast.error("Informe os valores mínimo e máximo"); return; }
+
+    const dates = generateDates();
+    if (dates.length === 0) { toast.error("Nenhuma data gerada no período"); return; }
+
+    setGenerating(true);
+    let successCount = 0;
+
+    for (const date of dates) {
+      let valor: number;
+      if (valorAleatorio) {
+        const min = parseFloat(valorMin);
+        const max = parseFloat(valorMax);
+        valor = Math.round((Math.random() * (max - min) + min) * 100) / 100;
+      } else {
+        valor = parseFloat(valorFixo);
+      }
+
+      try {
+        await apiPost("admin.php", {
+          action: "criar_transacao",
+          conta_id: parseInt(selectedConta),
+          tipo,
+          categoria,
+          descricao,
+          valor,
+          data_transacao: date,
+          beneficiario_nome: beneficiario,
+          beneficiario_documento: documento,
+          beneficiario_banco: banco,
+          beneficiario_banco_codigo: bancoCodigo,
+          beneficiario_agencia: agencia,
+          beneficiario_conta: conta,
+        });
+        successCount++;
+      } catch {
+        // continue
+      }
+    }
+
+    setGenerating(false);
+    toast.success(`${successCount} movimentações geradas com sucesso!`);
+    onGenerated();
+  };
+
+  return (
+    <Card className="nu-card border-0">
+      <CardHeader>
+        <CardTitle className="text-lg text-foreground flex items-center gap-2">
+          <Copy className="h-5 w-5" /> Gerador de Extrato
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">Gere múltiplas movimentações de uma vez, repetindo em várias datas com valores fixos ou aleatórios.</p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Data início *</Label>
+              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+            </div>
+            <div>
+              <Label>Data fim *</Label>
+              <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+            </div>
+            <div>
+              <Label>Frequência</Label>
+              <Select value={frequencia} onValueChange={v => setFrequencia(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="diario">Diário</SelectItem>
+                  <SelectItem value="semanal">Semanal</SelectItem>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tipo *</Label>
+              <Select value={tipo} onValueChange={handleTipoChangeGen}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="entrada">Entrada</SelectItem>
+                  <SelectItem value="saida">Saída</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={categoria} onValueChange={setCategoria}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="TED">TED</SelectItem>
+                  <SelectItem value="BOLETO">Boleto</SelectItem>
+                  <SelectItem value="ESTORNO">Estorno</SelectItem>
+                  <SelectItem value="RENDIMENTO">Rendimento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descrição</Label>
+              <Input value={descricao} onChange={e => setDescricao(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Valor */}
+          <div className="border border-border rounded-lg p-4">
+            <div className="flex items-center gap-4 mb-3">
+              <Label className="text-sm font-semibold">Valor</Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={valorAleatorio} onChange={e => setValorAleatorio(e.target.checked)} className="rounded" />
+                Valores aleatórios
+              </label>
+            </div>
+            {valorAleatorio ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Mínimo (R$)</Label>
+                  <Input type="number" step="0.01" value={valorMin} onChange={e => setValorMin(e.target.value)} placeholder="100.00" />
+                </div>
+                <div>
+                  <Label>Máximo (R$)</Label>
+                  <Input type="number" step="0.01" value={valorMax} onChange={e => setValorMax(e.target.value)} placeholder="5000.00" />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label>Valor fixo (R$) *</Label>
+                <Input type="number" step="0.01" value={valorFixo} onChange={e => setValorFixo(e.target.value)} placeholder="0,00" />
+              </div>
+            )}
+          </div>
+
+          {/* Beneficiário */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Beneficiário/Pagador</Label>
+              <Input value={beneficiario} onChange={e => setBeneficiario(e.target.value)} />
+            </div>
+            <div>
+              <Label>CPF/CNPJ</Label>
+              <Input value={documento} onChange={e => setDocumento(e.target.value)} />
+            </div>
+            <div>
+              <Label>Banco</Label>
+              <Input value={banco} onChange={e => setBanco(e.target.value)} />
+            </div>
+            <div>
+              <Label>Código do Banco</Label>
+              <Input value={bancoCodigo} onChange={e => setBancoCodigo(e.target.value)} placeholder="0033" />
+            </div>
+            <div>
+              <Label>Agência</Label>
+              <Input value={agencia} onChange={e => setAgencia(e.target.value)} />
+            </div>
+            <div>
+              <Label>Conta</Label>
+              <Input value={conta} onChange={e => setConta(e.target.value)} />
+            </div>
+          </div>
+
+          {dataInicio && dataFim && (
+            <p className="text-sm text-muted-foreground">
+              📊 Serão geradas <strong>{generateDates().length}</strong> movimentações ({frequencia === "diario" ? "diárias" : frequencia === "semanal" ? "semanais" : "mensais"})
+            </p>
+          )}
+
+          <Button variant="hero" onClick={handleGenerate} disabled={generating}>
+            {generating ? "Gerando..." : <><Copy className="h-4 w-4 mr-2" /> Gerar movimentações</>}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// EXTRATO PREVIEW (with edit modal on all fields)
+// ============================================================
 function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extratoData, formatCurrency, onTransacaoUpdated }: {
   contaInfo: any; resumo: any; movimentacoes: any; datasOrdenadas: string[]; extratoData: any; formatCurrency: (v: number) => string; onTransacaoUpdated: () => void;
 }) {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [editingTransacao, setEditingTransacao] = useState<any>(null);
 
   const fmtPeriodo = (d: string) =>
     new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
@@ -464,184 +774,166 @@ function ExtratoPreview({ contaInfo, resumo, movimentacoes, datasOrdenadas, extr
     saldoPorDia[dia] = saldoAcumulado;
   }
 
-  const handleStartEdit = (t: any) => {
-    setEditingId(t.id);
-    setEditValue(t.valor);
-  };
+  const pencilBtn = (t: any) => (
+    <button onClick={() => setEditingTransacao(t)} className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100 print:hidden">
+      <Pencil className="h-3 w-3" />
+    </button>
+  );
 
-  const handleSaveEdit = async (transacaoId: number) => {
-    try {
-      await apiPost("admin.php", {
-        action: "editar_transacao",
-        transacao_id: transacaoId,
-        valor: parseFloat(editValue),
-      });
-      toast.success("Valor atualizado!");
-      setEditingId(null);
-      onTransacaoUpdated();
-    } catch {
-      toast.error("Erro ao atualizar valor");
-    }
-  };
-
-  const renderTransacaoRow = (t: any, i: number) => {
-    const isEditing = editingId === t.id;
-    return (
-      <tr key={t.id || i}>
-        <td style={{ padding: "4px 16px 4px 0" }}></td>
-        <td style={{ padding: "4px 0", verticalAlign: "top", width: "200px" }}>
-          {t.descricao}
-        </td>
-        <td style={{ padding: "4px 8px", verticalAlign: "top", color: "#555", fontSize: "10px", lineHeight: "1.6" }}>
-          {t.beneficiario_nome} - {t.beneficiario_documento} - {t.beneficiario_banco} Agência: {t.beneficiario_agencia} Conta: {t.beneficiario_conta}
-        </td>
-        <td style={{ textAlign: "right", padding: "4px 0 4px 24px", verticalAlign: "top", whiteSpace: "nowrap" }}>
-          {isEditing ? (
-            <span className="inline-flex items-center gap-1">
-              <Input
-                type="number"
-                step="0.01"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                className="w-28 h-7 text-right text-xs"
-              />
-              <button onClick={() => handleSaveEdit(t.id)} className="text-green-600 hover:text-green-800 p-0.5"><Check className="h-3.5 w-3.5" /></button>
-              <button onClick={() => setEditingId(null)} className="text-red-500 hover:text-red-700 p-0.5"><X className="h-3.5 w-3.5" /></button>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1">
-              {formatCurrency(parseFloat(t.valor))}
-              <button onClick={() => handleStartEdit(t)} className="text-muted-foreground hover:text-foreground p-0.5 opacity-50 hover:opacity-100"><Pencil className="h-3 w-3" /></button>
-            </span>
-          )}
-        </td>
-      </tr>
-    );
-  };
+  const renderTransacaoRow = (t: any, i: number) => (
+    <tr key={t.id || i}>
+      <td style={{ padding: "4px 16px 4px 0" }}></td>
+      <td style={{ padding: "4px 0", verticalAlign: "top", width: "200px" }}>
+        <span className="inline-flex items-center gap-1">
+          {t.descricao} {pencilBtn(t)}
+        </span>
+      </td>
+      <td style={{ padding: "4px 8px", verticalAlign: "top", color: "#555", fontSize: "10px", lineHeight: "1.6" }}>
+        <span className="inline-flex items-center gap-1 flex-wrap">
+          {t.beneficiario_nome} - {t.beneficiario_documento} - {t.beneficiario_banco}
+          {t.beneficiario_banco_codigo ? ` (${t.beneficiario_banco_codigo})` : ""}
+          {" "}Agência: {t.beneficiario_agencia} Conta: {t.beneficiario_conta}
+          {pencilBtn(t)}
+        </span>
+      </td>
+      <td style={{ textAlign: "right", padding: "4px 0 4px 24px", verticalAlign: "top", whiteSpace: "nowrap" }}>
+        <span className="inline-flex items-center gap-1">
+          {formatCurrency(parseFloat(t.valor))} {pencilBtn(t)}
+        </span>
+      </td>
+    </tr>
+  );
 
   return (
-    <div className="bg-white text-black p-8 max-w-[210mm] mx-auto" style={{ fontFamily: "'Graphik', 'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: "11px", lineHeight: "1.5" }}>
-      {/* HEADER */}
-      <div className="flex justify-between items-start mb-12">
-        <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto", marginLeft: "15px" }} />
-        <div className="text-right" style={{ fontSize: "12px", lineHeight: "1.6" }}>
-          <p>{contaInfo.titular || "—"}</p>
-          <p>
-            <span style={{ fontWeight: 700, color: "#222" }}>{contaInfo.tipo_conta === "PJ" ? "CNPJ" : "CPF"}</span>{"  "}{contaInfo.documento || "—"}{"  "}
-            <span style={{ fontWeight: 700 }}>Agência</span>{"  "}{contaInfo.agencia || "0001"}{"  "}
-            <span style={{ fontWeight: 700 }}>Conta</span>
-          </p>
-          <p>{contaInfo.numero_conta || "—"}</p>
-        </div>
-      </div>
-
-      {/* PERÍODO */}
-      <div style={{ borderBottom: "2px solid #ccc", paddingBottom: "8px", marginBottom: "24px" }}>
-        <div className="flex justify-between items-baseline">
-          <span style={{ fontWeight: 700, fontSize: "12px" }}>
-            {extratoData?.periodo ? `${fmtPeriodo(extratoData.periodo.inicio)} a ${fmtPeriodo(extratoData.periodo.fim)}` : "—"}
-          </span>
-          <span style={{ fontSize: "12px", color: "#666" }}>VALORES EM R$</span>
-        </div>
-      </div>
-
-      {/* RESUMO */}
-      <div className="flex justify-between items-start" style={{ marginBottom: "24px" }}>
-        <div style={{ paddingTop: "8px" }}>
-          <p style={{ fontSize: "11px", color: "#000", marginBottom: "6px", fontWeight: 700 }}>Saldo final do período</p>
-          <p style={{ fontSize: "22px", fontWeight: 700, color: "#820AD1", lineHeight: "1.2" }}>R$ {formatCurrency(resumo.saldo_final)}</p>
-        </div>
-        <table style={{ fontSize: "12px", borderCollapse: "collapse", minWidth: "320px" }}>
-          <tbody>
-            <tr><td style={{ fontWeight: 700, padding: "3px 16px 3px 0" }}>Saldo inicial</td><td style={{ textAlign: "right", padding: "3px 0" }}>{formatCurrency(resumo.saldo_inicial)}</td></tr>
-            <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Rendimento líquido</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.rendimento_liquido)}</td></tr>
-            <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de entradas</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.total_entradas)}</td></tr>
-            <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de saídas</td><td style={{ textAlign: "right", padding: "3px 0" }}>-{formatCurrency(resumo.total_saidas)}</td></tr>
-            <tr><td style={{ fontWeight: 700, padding: "6px 16px 3px 0" }}>Saldo final do período</td><td style={{ fontWeight: 700, textAlign: "right", padding: "6px 0 3px 0" }}>{formatCurrency(resumo.saldo_final)}</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* MOVIMENTAÇÕES */}
-      <div style={{ borderBottom: "2px solid #ccc", marginBottom: "4px" }}></div>
-      <div style={{ marginBottom: "16px" }}>
-        <span style={{ fontWeight: 700, fontSize: "12px" }}>Movimentações</span>
-      </div>
-
-      {datasOrdenadas.length === 0 && <p style={{ textAlign: "center", color: "#999", padding: "20px 0" }}>Nenhuma movimentação encontrada.</p>}
-
-      {datasOrdenadas.map(dia => {
-        const trans = movimentacoes[dia];
-        const entradas = trans.filter((t: any) => t.tipo === "entrada");
-        const saidas = trans.filter((t: any) => t.tipo === "saida");
-        const totalE = entradas.reduce((s: number, t: any) => s + parseFloat(t.valor), 0);
-        const totalS = saidas.reduce((s: number, t: any) => s + parseFloat(t.valor), 0);
-        const dateShownInEntradas = entradas.length > 0;
-
-        return (
-          <div key={dia} style={{ marginBottom: "0" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
-              <tbody>
-                {entradas.length > 0 && (
-                  <>
-                    <tr>
-                      <td style={{ width: "110px", verticalAlign: "top", padding: "10px 16px 10px 0", color: "#222", fontWeight: 700 }}>{fmtDia(dia)}</td>
-                      <td style={{ fontWeight: 700, padding: "10px 0", verticalAlign: "top" }}>Total de entradas</td>
-                      <td style={{ padding: "10px 0" }}></td>
-                      <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px", whiteSpace: "nowrap", verticalAlign: "top" }}>+ {formatCurrency(totalE)}</td>
-                    </tr>
-                    {entradas.map((t: any, i: number) => renderTransacaoRow(t, i))}
-                  </>
-                )}
-                {saidas.length > 0 && (
-                  <>
-                    <tr>
-                      <td style={{ width: "110px", verticalAlign: "top", padding: "10px 16px 10px 0", color: "#222", fontWeight: 700 }}>{!dateShownInEntradas ? fmtDia(dia) : ""}</td>
-                      <td style={{ fontWeight: 700, padding: "10px 0", verticalAlign: "top" }}>Total de saídas</td>
-                      <td style={{ padding: "10px 0" }}></td>
-                      <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px", whiteSpace: "nowrap", verticalAlign: "top" }}>- {formatCurrency(totalS)}</td>
-                    </tr>
-                    {saidas.map((t: any, i: number) => renderTransacaoRow(t, i))}
-                  </>
-                )}
-                <tr style={{ borderBottom: "2px solid #ccc" }}>
-                  <td style={{ padding: "10px 16px 10px 0" }}></td>
-                  <td style={{ fontWeight: 700, padding: "10px 0" }}>Saldo do dia</td>
-                  <td style={{ padding: "10px 0" }}></td>
-                  <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px" }}>{formatCurrency(saldoPorDia[dia])}</td>
-                </tr>
-              </tbody>
-            </table>
+    <>
+      <EditTransacaoModal
+        transacao={editingTransacao}
+        open={!!editingTransacao}
+        onClose={() => setEditingTransacao(null)}
+        onSaved={onTransacaoUpdated}
+      />
+      <div className="bg-white text-black p-8 max-w-[210mm] mx-auto" style={{ fontFamily: "'Graphik', 'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: "11px", lineHeight: "1.5" }}>
+        {/* HEADER */}
+        <div className="flex justify-between items-start mb-12">
+          <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto", marginLeft: "30px" }} />
+          <div className="text-right" style={{ fontSize: "12px", lineHeight: "1.6" }}>
+            <p>{contaInfo.titular || "—"}</p>
+            <p>
+              <span style={{ fontWeight: 700, color: "#222" }}>{contaInfo.tipo_conta === "PJ" ? "CNPJ" : "CPF"}</span>{"  "}{contaInfo.documento || "—"}{"  "}
+              <span style={{ fontWeight: 700 }}>Agência</span>{"  "}{contaInfo.agencia || "0001"}{"  "}
+              <span style={{ fontWeight: 700 }}>Conta</span>
+            </p>
+            <p>{contaInfo.numero_conta || "—"}</p>
           </div>
-        );
-      })}
+        </div>
 
-      {/* Rodapé */}
-      <div style={{ marginTop: "40px", borderTop: "1px solid #ddd", paddingTop: "16px", fontSize: "10px", color: "#555", lineHeight: "1.6" }}>
-        <p>O saldo líquido corresponde ao total de depósitos e rendimentos em conta, não considerando movimentações feitas após a data mencionada.</p>
-        <p>Não nos responsabilizamos pelo uso indevido ou por alterações das informações originalmente contidas neste documento após envio.</p>
-        <p>Asseguramos a autenticidade destas movimentações e das informações aqui citadas.</p>
-      </div>
-      <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "11.5px", lineHeight: "1.6", color: "#222" }}>
-        <div>
-          <p style={{ fontWeight: 700 }}>Nu Financeira S.A. - Sociedade de Credito, Financiamento</p>
-          <p style={{ fontWeight: 700 }}>e Investimento</p>
-          <p>CNPJ: 30.680.829/0001-43</p>
+        {/* PERÍODO */}
+        <div style={{ borderBottom: "2px solid #ccc", paddingBottom: "8px", marginBottom: "24px" }}>
+          <div className="flex justify-between items-baseline">
+            <span style={{ fontWeight: 700, fontSize: "12px" }}>
+              {extratoData?.periodo ? `${fmtPeriodo(extratoData.periodo.inicio)} a ${fmtPeriodo(extratoData.periodo.fim)}` : "—"}
+            </span>
+            <span style={{ fontSize: "12px", color: "#666" }}>VALORES EM R$</span>
+          </div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <p style={{ fontWeight: 700 }}>Nu Pagamentos S.A. - Instituição de Pagamento</p>
-          <p>CNPJ: 18.236.120/0001-58</p>
+
+        {/* RESUMO */}
+        <div className="flex justify-between items-start" style={{ marginBottom: "24px" }}>
+          <div style={{ paddingTop: "8px" }}>
+            <p style={{ fontSize: "11px", color: "#000", marginBottom: "6px", fontWeight: 700 }}>Saldo final do período</p>
+            <p style={{ fontSize: "22px", fontWeight: 700, color: "#820AD1", lineHeight: "1.2" }}>R$ {formatCurrency(resumo.saldo_final)}</p>
+          </div>
+          <table style={{ fontSize: "12px", borderCollapse: "collapse", minWidth: "320px" }}>
+            <tbody>
+              <tr><td style={{ fontWeight: 700, padding: "3px 16px 3px 0" }}>Saldo inicial</td><td style={{ textAlign: "right", padding: "3px 0" }}>{formatCurrency(resumo.saldo_inicial)}</td></tr>
+              <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Rendimento líquido</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.rendimento_liquido)}</td></tr>
+              <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de entradas</td><td style={{ textAlign: "right", padding: "3px 0" }}>+{formatCurrency(resumo.total_entradas)}</td></tr>
+              <tr><td style={{ padding: "3px 16px 3px 0", color: "#444" }}>Total de saídas</td><td style={{ textAlign: "right", padding: "3px 0" }}>-{formatCurrency(resumo.total_saidas)}</td></tr>
+              <tr><td style={{ fontWeight: 700, padding: "6px 16px 3px 0" }}>Saldo final do período</td><td style={{ fontWeight: 700, textAlign: "right", padding: "6px 0 3px 0" }}>{formatCurrency(resumo.saldo_final)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* MOVIMENTAÇÕES */}
+        <div style={{ borderBottom: "2px solid #ccc", marginBottom: "4px" }}></div>
+        <div style={{ marginBottom: "16px" }}>
+          <span style={{ fontWeight: 700, fontSize: "12px" }}>Movimentações</span>
+        </div>
+
+        {datasOrdenadas.length === 0 && <p style={{ textAlign: "center", color: "#999", padding: "20px 0" }}>Nenhuma movimentação encontrada.</p>}
+
+        {datasOrdenadas.map(dia => {
+          const trans = movimentacoes[dia];
+          const entradas = trans.filter((t: any) => t.tipo === "entrada");
+          const saidas = trans.filter((t: any) => t.tipo === "saida");
+          const totalE = entradas.reduce((s: number, t: any) => s + parseFloat(t.valor), 0);
+          const totalS = saidas.reduce((s: number, t: any) => s + parseFloat(t.valor), 0);
+          const dateShownInEntradas = entradas.length > 0;
+
+          return (
+            <div key={dia} style={{ marginBottom: "0" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                <tbody>
+                  {entradas.length > 0 && (
+                    <>
+                      <tr>
+                        <td style={{ width: "110px", verticalAlign: "top", padding: "10px 16px 10px 0", color: "#222", fontWeight: 700 }}>{fmtDia(dia)}</td>
+                        <td style={{ fontWeight: 700, padding: "10px 0", verticalAlign: "top" }}>Total de entradas</td>
+                        <td style={{ padding: "10px 0" }}></td>
+                        <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px", whiteSpace: "nowrap", verticalAlign: "top" }}>+ {formatCurrency(totalE)}</td>
+                      </tr>
+                      {entradas.map((t: any, i: number) => renderTransacaoRow(t, i))}
+                    </>
+                  )}
+                  {saidas.length > 0 && (
+                    <>
+                      <tr>
+                        <td style={{ width: "110px", verticalAlign: "top", padding: "10px 16px 10px 0", color: "#222", fontWeight: 700 }}>{!dateShownInEntradas ? fmtDia(dia) : ""}</td>
+                        <td style={{ fontWeight: 700, padding: "10px 0", verticalAlign: "top" }}>Total de saídas</td>
+                        <td style={{ padding: "10px 0" }}></td>
+                        <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px", whiteSpace: "nowrap", verticalAlign: "top" }}>- {formatCurrency(totalS)}</td>
+                      </tr>
+                      {saidas.map((t: any, i: number) => renderTransacaoRow(t, i))}
+                    </>
+                  )}
+                  <tr style={{ borderBottom: "2px solid #ccc" }}>
+                    <td style={{ padding: "10px 16px 10px 0" }}></td>
+                    <td style={{ fontWeight: 700, padding: "10px 0" }}>Saldo do dia</td>
+                    <td style={{ padding: "10px 0" }}></td>
+                    <td style={{ fontWeight: 700, textAlign: "right", padding: "10px 0 10px 24px" }}>{formatCurrency(saldoPorDia[dia])}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+
+        {/* Rodapé */}
+        <div style={{ marginTop: "40px", borderTop: "1px solid #ddd", paddingTop: "16px", fontSize: "10px", color: "#555", lineHeight: "1.6" }}>
+          <p>O saldo líquido corresponde ao total de depósitos e rendimentos em conta, não considerando movimentações feitas após a data mencionada.</p>
+          <p>Não nos responsabilizamos pelo uso indevido ou por alterações das informações originalmente contidas neste documento após envio.</p>
+          <p>Asseguramos a autenticidade destas movimentações e das informações aqui citadas.</p>
+        </div>
+        <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "11.5px", lineHeight: "1.6", color: "#222" }}>
+          <div>
+            <p style={{ fontWeight: 700 }}>Nu Financeira S.A. - Sociedade de Credito, Financiamento</p>
+            <p style={{ fontWeight: 700 }}>e Investimento</p>
+            <p>CNPJ: 30.680.829/0001-43</p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <p style={{ fontWeight: 700 }}>Nu Pagamentos S.A. - Instituição de Pagamento</p>
+            <p>CNPJ: 18.236.120/0001-58</p>
+          </div>
+        </div>
+        <div style={{ marginTop: "16px", fontSize: "10px", color: "#888", lineHeight: "1.6" }}>
+          <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app.</p>
+          <div className="flex justify-between" style={{ marginTop: "12px", paddingRight: "15px" }}>
+            <span style={{ marginLeft: "15px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+            <span>1 de 1</span>
+          </div>
         </div>
       </div>
-      <div style={{ marginTop: "16px", fontSize: "10px", color: "#888", lineHeight: "1.6" }}>
-        <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app ou ligue 4020 0185 (capitais e regiões metropolitanas) ou 0800 591 2117 (demais localidades). Atendimento 24h.</p>
-        <p style={{ marginTop: "8px" }}>Caso a solução fornecida nos canais de atendimento não tenha sido satisfatória, fale com a Ouvidoria em 0800 887 0463 ou pelos meios disponíveis em nubank.com.br/contatos#ouvidoria. Atendimento das 8h às 18h em dias úteis.</p>
-        <div className="flex justify-between" style={{ marginTop: "12px", paddingRight: "15px" }}>
-          <span style={{ marginLeft: "15px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
-          <span>1 de 1</span>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -652,14 +944,8 @@ function ExportarExtrato({ selectedConta, contaInfo }: { selectedConta: string; 
   const [dataFim, setDataFim] = useState("");
 
   const handleContinuar = () => {
-    if (!selectedConta) {
-      toast.error("Selecione uma conta primeiro");
-      return;
-    }
-    if (!dataInicio || !dataFim) {
-      toast.error("Selecione o período");
-      return;
-    }
+    if (!selectedConta) { toast.error("Selecione uma conta primeiro"); return; }
+    if (!dataInicio || !dataFim) { toast.error("Selecione o período"); return; }
     navigate(`/extrato-export?conta_id=${selectedConta}&data_inicio=${dataInicio}&data_fim=${dataFim}`);
   };
 
