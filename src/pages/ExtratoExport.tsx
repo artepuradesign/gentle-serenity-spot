@@ -302,7 +302,7 @@ const ExtratoExport = () => {
               <p>Asseguramos a autenticidade destas movimentações e das informações aqui citadas.</p>
             </div>
 
-            <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "10px", lineHeight: "1.6", color: "#222" }}>
+            <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "11.5px", lineHeight: "1.6", color: "#222" }}>
               <div>
                 <p style={{ fontWeight: 700 }}>Nu Financeira S.A. - Sociedade de Credito, Financiamento</p>
                 <p style={{ fontWeight: 700 }}>e Investimento</p>
