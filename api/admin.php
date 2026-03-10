@@ -5,6 +5,8 @@
  * GET  /api/admin.php?action=contas          - Listar todas as contas
  * GET  /api/admin.php?action=transacoes&conta_id=X  - Transações de uma conta
  * POST /api/admin.php?action=ativar_usuario  - Ativar/bloquear usuário
+ * POST /api/admin.php?action=criar_transacao - Criar transação
+ * POST /api/admin.php?action=editar_transacao - Editar transação
  */
 require_once 'config.php';
 
@@ -71,7 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $dataFim = $_GET['data_fim'] ?? date('Y-m-d');
 
         try {
-            // Dados da conta
             $stmt = $pdo->prepare("
                 SELECT c.*, u.tipo_conta,
                     COALESCE(pf.nome_completo, pj.razao_social) as titular,
@@ -91,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 exit();
             }
 
-            // Transações
             $stmt = $pdo->prepare("
                 SELECT * FROM transacoes
                 WHERE conta_id = ? AND DATE(data_transacao) BETWEEN ? AND ?
@@ -100,13 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmt->execute([$contaId, $dataInicio, $dataFim]);
             $transacoes = $stmt->fetchAll();
 
-            // Saldo inicial
             $stmtSaldo = $pdo->prepare("SELECT saldo_anterior FROM transacoes WHERE conta_id = ? AND DATE(data_transacao) >= ? ORDER BY data_transacao ASC LIMIT 1");
             $stmtSaldo->execute([$contaId, $dataInicio]);
             $primeira = $stmtSaldo->fetch();
             $saldoInicial = $primeira ? floatval($primeira['saldo_anterior']) : floatval($conta['saldo']);
 
-            // Totais
             $totalEntradas = 0;
             $totalSaidas = 0;
             $rendimentoLiquido = 0;
@@ -122,7 +120,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
             $saldoFinal = $saldoInicial + $totalEntradas - $totalSaidas;
 
-            // Agrupar por dia
             $porDia = [];
             foreach ($transacoes as $t) {
                 $dia = date('Y-m-d', strtotime($t['data_transacao']));
@@ -167,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'ativar_usuario') {
         try {
             $userId = intval($data['usuario_id']);
-            $status = $data['status']; // 'ativo', 'bloqueado', 'pendente'
+            $status = $data['status'];
             $stmt = $pdo->prepare("UPDATE usuarios SET status = ? WHERE id = ? AND is_admin = 0");
             $stmt->execute([$status, $userId]);
             echo json_encode(['success' => true, 'message' => 'Status atualizado']);
@@ -193,16 +190,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 INSERT INTO transacoes (conta_id, tipo, categoria, descricao, valor, saldo_anterior, saldo_posterior, data_transacao,
-                    beneficiario_nome, beneficiario_documento, beneficiario_banco, beneficiario_agencia, beneficiario_conta,
+                    beneficiario_nome, beneficiario_documento, beneficiario_banco, beneficiario_banco_codigo, beneficiario_agencia, beneficiario_conta,
                     codigo_autenticacao, admin_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $contaId, $tipo, $data['categoria'], $data['descricao'], $valor,
                 $saldoAnterior, $saldoPosterior, $data['data_transacao'],
                 $data['beneficiario_nome'] ?? null, $data['beneficiario_documento'] ?? null,
-                $data['beneficiario_banco'] ?? null, $data['beneficiario_agencia'] ?? null,
-                $data['beneficiario_conta'] ?? null,
+                $data['beneficiario_banco'] ?? null, $data['beneficiario_banco_codigo'] ?? null,
+                $data['beneficiario_agencia'] ?? null, $data['beneficiario_conta'] ?? null,
                 bin2hex(random_bytes(16)), $data['admin_id'] ?? null,
             ]);
 
@@ -215,6 +212,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit();
+    }
+
+    if ($action === 'editar_transacao') {
+        try {
+            $pdo->beginTransaction();
+            $transacaoId = intval($data['transacao_id']);
+
+            // Get current transaction
+            $stmt = $pdo->prepare("SELECT * FROM transacoes WHERE id = ?");
+            $stmt->execute([$transacaoId]);
+            $transacao = $stmt->fetch();
+
+            if (!$transacao) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Transação não encontrada']);
+                exit();
+            }
+
+            $novoValor = floatval($data['valor'] ?? $transacao['valor']);
+            $valorAntigo = floatval($transacao['valor']);
+            $diferencaValor = $novoValor - $valorAntigo;
+
+            // Update transaction fields
+            $stmt = $pdo->prepare("
+                UPDATE transacoes SET
+                    data_transacao = COALESCE(?, data_transacao),
+                    descricao = COALESCE(?, descricao),
+                    valor = ?,
+                    beneficiario_nome = COALESCE(?, beneficiario_nome),
+                    beneficiario_documento = COALESCE(?, beneficiario_documento),
+                    beneficiario_banco = COALESCE(?, beneficiario_banco),
+                    beneficiario_banco_codigo = COALESCE(?, beneficiario_banco_codigo),
+                    beneficiario_agencia = COALESCE(?, beneficiario_agencia),
+                    beneficiario_conta = COALESCE(?, beneficiario_conta)
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $data['data_transacao'] ?? null,
+                $data['descricao'] ?? null,
+                $novoValor,
+                $data['beneficiario_nome'] ?? null,
+                $data['beneficiario_documento'] ?? null,
+                $data['beneficiario_banco'] ?? null,
+                $data['beneficiario_banco_codigo'] ?? null,
+                $data['beneficiario_agencia'] ?? null,
+                $data['beneficiario_conta'] ?? null,
+                $transacaoId,
+            ]);
+
+            // If value changed, update account balance
+            if ($diferencaValor != 0) {
+                $contaId = $transacao['conta_id'];
+                if ($transacao['tipo'] === 'entrada') {
+                    $stmt = $pdo->prepare("UPDATE contas SET saldo = saldo + ? WHERE id = ?");
+                } else {
+                    $stmt = $pdo->prepare("UPDATE contas SET saldo = saldo - ? WHERE id = ?");
+                }
+                $stmt->execute([$diferencaValor, $contaId]);
+            }
+
+            $pdo->commit();
+            echo json_encode(['success' => true, 'message' => 'Transação atualizada']);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao editar transação: ' . $e->getMessage()]);
         }
         exit();
     }
