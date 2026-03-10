@@ -471,6 +471,7 @@ function EditTransacaoModal({ transacao, open, onClose, onSaved }: {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Editar Transação</DialogTitle>
+          <DialogDescription>Altere os campos desejados e clique em salvar.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
           <div>
