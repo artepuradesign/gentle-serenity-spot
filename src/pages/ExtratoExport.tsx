@@ -132,8 +132,8 @@ const ExtratoExport = () => {
       <div className="print-footer hidden print:block">
         <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app ou ligue 4020 0185 (capitais e regiões metropolitanas) ou 0800 591 2117 (demais localidades). Atendimento 24h.</p>
         <p style={{ marginTop: "4px" }}>Caso a solução fornecida nos canais de atendimento não tenha sido satisfatória, fale com a Ouvidoria em 0800 887 0463 ou pelos meios disponíveis em nubank.com.br/contatos#ouvidoria. Atendimento das 8h às 18h em dias úteis.</p>
-        <div className="footer-date-page">
-          <span>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+        <div className="footer-date-page" style={{ paddingRight: "10px" }}>
+          <span style={{ marginLeft: "10px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
           <span className="footer-page-number"></span>
         </div>
       </div>
@@ -155,7 +155,7 @@ const ExtratoExport = () => {
         >
           {/* ===== HEADER ===== */}
           <div className="flex justify-between items-start mb-12">
-            <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto" }} />
+            <img src={logoNu} alt="Nu" style={{ height: "32px", width: "auto", marginLeft: "15px" }} />
             <div className="text-right" style={{ fontSize: "12px", lineHeight: "1.6" }}>
               <p style={{ fontWeight: 400 }}>{conta.titular}</p>
               <p>
@@ -180,8 +180,8 @@ const ExtratoExport = () => {
           {/* ===== RESUMO ===== */}
           <div className="flex justify-between items-start" style={{ marginBottom: "24px" }}>
             <div style={{ paddingTop: "8px" }}>
-              <p style={{ fontSize: "11px", color: "#666", marginBottom: "6px", fontWeight: 700 }}>Saldo final do período</p>
-              <p style={{ fontSize: "22px", fontWeight: 400, color: "#820AD1", lineHeight: "1.2" }}>
+              <p style={{ fontSize: "11px", color: "#000", marginBottom: "6px", fontWeight: 700 }}>Saldo final do período</p>
+              <p style={{ fontSize: "22px", fontWeight: 700, color: "#820AD1", lineHeight: "1.2" }}>
                 R$ {fmt(resumo.saldo_final)}
               </p>
             </div>
@@ -302,7 +302,7 @@ const ExtratoExport = () => {
               <p>Asseguramos a autenticidade destas movimentações e das informações aqui citadas.</p>
             </div>
 
-            <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "10px", lineHeight: "1.6", color: "#222" }}>
+            <div className="flex justify-between items-start" style={{ marginTop: "20px", fontSize: "11.5px", lineHeight: "1.6", color: "#222" }}>
               <div>
                 <p style={{ fontWeight: 700 }}>Nu Financeira S.A. - Sociedade de Credito, Financiamento</p>
                 <p style={{ fontWeight: 700 }}>e Investimento</p>
@@ -319,8 +319,8 @@ const ExtratoExport = () => {
           <div className="print-footer-screen" style={{ marginTop: "32px" }}>
             <p>Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app ou ligue 4020 0185 (capitais e regiões metropolitanas) ou 0800 591 2117 (demais localidades). Atendimento 24h.</p>
             <p style={{ marginTop: "8px" }}>Caso a solução fornecida nos canais de atendimento não tenha sido satisfatória, fale com a Ouvidoria em 0800 887 0463 ou pelos meios disponíveis em nubank.com.br/contatos#ouvidoria. Atendimento das 8h às 18h em dias úteis.</p>
-            <div className="flex justify-between" style={{ marginTop: "12px" }}>
-              <span>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+            <div className="flex justify-between" style={{ marginTop: "12px", paddingRight: "15px" }}>
+              <span style={{ marginLeft: "15px" }}>Extrato gerado dia {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
               <span>1 de 1</span>
             </div>
           </div>
