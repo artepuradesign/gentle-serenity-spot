@@ -331,7 +331,15 @@ const Admin = () => {
                 ) : !selectedConta ? (
                   <p className="text-muted-foreground text-center py-8">Selecione uma conta para visualizar o extrato.</p>
                 ) : (
-                  <ExtratoPreview contaInfo={contaInfo} resumo={resumo} movimentacoes={movimentacoes} datasOrdenadas={datasOrdenadas} extratoData={extratoData} formatCurrency={formatCurrency} />
+                  <ExtratoPreview
+                    contaInfo={contaInfo}
+                    resumo={resumo}
+                    movimentacoes={movimentacoes}
+                    datasOrdenadas={datasOrdenadas}
+                    extratoData={extratoData}
+                    formatCurrency={formatCurrency}
+                    onTransacaoUpdated={() => fetchExtrato(selectedConta)}
+                  />
                 )}
               </CardContent>
             </Card>
