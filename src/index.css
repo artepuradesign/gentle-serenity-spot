@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Graphik';
+  src: url('./fonts/graphik_regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik';
+  src: url('./fonts/graphik_medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik';
+  src: url('./fonts/graphik_bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CircularStd';
+  src: url('./fonts/circular_std_book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CircularStd';
+  src: url('./fonts/circular_std_bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 270 5% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 270 5% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 5% 15%;
+
+    --primary: 275 80% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 270 15% 95%;
+    --secondary-foreground: 270 5% 15%;
+
+    --muted: 270 10% 96%;
+    --muted-foreground: 270 5% 45%;
+
+    --accent: 275 80% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 270 10% 90%;
+    --input: 270 10% 90%;
+    --ring: 275 80% 45%;
+
+    --radius: 0.75rem;
+
+    --nu-purple: 275 80% 45%;
+    --nu-purple-dark: 275 85% 35%;
+    --nu-purple-light: 275 60% 92%;
+    --nu-green: 150 60% 45%;
+    --nu-green-foreground: 0 0% 100%;
+    --nu-dark: 270 20% 8%;
+    --nu-gray: 270 5% 55%;
+    --nu-light-gray: 270 10% 97%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(275 80% 45%), hsl(290 70% 55%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(270 15% 98%));
+    --shadow-card: 0 4px 24px -4px hsl(275 80% 45% / 0.1);
+    --shadow-elevated: 0 12px 40px -8px hsl(275 80% 45% / 0.15);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 270 20% 8%;
+    --foreground: 0 0% 95%;
+    --card: 270 18% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 270 18% 12%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 275 80% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 15% 18%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 270 15% 18%;
+    --muted-foreground: 270 5% 65%;
+    --accent: 275 80% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 270 15% 20%;
+    --input: 270 15% 20%;
+    --ring: 275 80% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Graphik', 'CircularStd', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+@layer components {
+  .nu-gradient-bg {
+    background: var(--gradient-hero);
+  }
+  .nu-card {
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-card);
+  }
+  .nu-card-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  .nu-text-gradient {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .font-heading {
+    font-family: 'CircularStd', 'Graphik', sans-serif;
+  }
+  .font-body {
+    font-family: 'Graphik', 'CircularStd', sans-serif;
+  }
+}

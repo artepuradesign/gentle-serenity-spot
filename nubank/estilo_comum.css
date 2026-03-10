@@ -1,0 +1,214 @@
+/* estilo_comum.css */
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #d1a1f7, #a1c4fd);
+}
+
+.container {
+    display: flex;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    max-width: 900px;
+    width: 600px;
+}
+
+.content {
+    flex: 1;
+    padding: 30px;
+}
+.content h1 {
+    font-size: 24px;
+    margin-bottom: 5px;
+    color: #333;
+    text-align: center;
+}
+
+.content p {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #666;
+    text-align: center;
+}
+
+.content form {
+    display: grid;
+    gap: 10px;
+    width: 90%;
+    margin: auto;
+}
+
+.content input[type="text"],
+.content input[type="password"] {
+    width: 90%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+    color: #333;
+}
+
+.content input[type="text"]::placeholder,
+.content input[type="password"]::placeholder {
+    color: #CCC;
+}
+
+.content input[type="text"]:focus,
+.content input[type="password"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(130, 10, 209, 0.5);
+}
+
+.content button {
+    background-color: #820AD1;
+    color: #fff;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    width: 100%;
+}
+
+.content button:hover {
+    background-color: #6f009d;
+}
+
+.content .error {
+    color: #e74c3c;
+    background-color: #FDEDEC;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.content .success {
+    color: #2ecc71;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.content a {
+    color: #820AD1;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.content a:hover {
+    text-decoration: underline;
+}
+
+.image {
+    display: none;
+    background: url('login_appnubank.jpg') center center/cover no-repeat;
+}
+/* Placeholder for loading animation */
+.placeholder {
+    background-color: #e0e0e0;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: 200px 0;
+    }
+}
+
+.placeholder.text {
+    height: 20px;
+    width: 100%;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+}
+
+.placeholder.image {
+    height: 150px;
+    width: 150px;
+    margin: 0 auto;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+}
+
+.hidden {
+    display: none;
+}
+@media(min-width: 768px) {
+    .container {
+        flex-direction: row;
+    }
+    .image {
+        display: block;
+        flex: 1;
+    }
+}
+
+@media(max-width: 767px) {
+    body {
+        background: url('login_appnubank.jpg') center center/cover no-repeat;
+        background-attachment: fixed;
+    }
+    .container {
+        box-shadow: none;
+        border-radius: 0;
+        background: transparent;
+        max-width: 80%;
+        margin: 10px;
+    }
+    .content {
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 12px;
+    }
+	/* Placeholder for loading animation */
+.placeholder {
+    background-color: #e0e0e0;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: 200px 0;
+    }
+}
+
+.placeholder.text {
+    height: 20px;
+    width: 100%;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+}
+
+.placeholder.image {
+    height: 150px;
+    width: 150px;
+    margin: 0 auto;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+}
+
+.hidden {
+    display: none;
+}
+}

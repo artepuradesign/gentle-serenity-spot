@@ -1,0 +1,41 @@
+﻿/* Importação das fontes */
+@font-face {
+  font-family: 'MaterialIcons';
+  src: url('MaterialIcons-Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Graphik Medium';
+  src: url('fonts/graphik_medium.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Graphik Regular';
+  src: url('fonts/graphik_regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Circular Std Book';
+  src: url('fonts/circular_std_book.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Circular Std Bold';
+  src: url('fonts/circular_std_bold.otf') format('opentype');
+}
+/* Regras de classe */
+.icon1 {
+	font-family: MaterialIcons;
+}
+.icon2 {
+	font-family: 'Graphik Medium';
+}
+.icon3 {
+	font-family: 'Graphik Regular';
+}
+.icon4 {
+  font-family: 'Circular Std Book';
+}
+.icon5 {
+  font-family: 'Circular Std Bold';
+}
+.textobranco {
+	color: #FFF;
+	background-color:#820AD1
+}
