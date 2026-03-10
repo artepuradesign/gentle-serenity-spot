@@ -15,6 +15,7 @@ import {
 import {
   LogOut, Plus, FileText, Users, TrendingUp, TrendingDown, DollarSign, Download, Pencil, Check, X, Copy,
 } from "lucide-react";
+import { DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
 import logoNu from "@/assets/logonu.png";
